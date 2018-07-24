@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="never">
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <title>豆瓣电影</title>
+  <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+<body>
+  <main>
+    <section id="top250">
+        <div class="ct">
+          <!--         <div class="item clearfix">
+            <a href="#">
+              <div class="cover">
+                <img src="http://img3.doubanio.com/view/photo/s_ratio_poster/public/p480747492.jpg">            
+              </div>
+              <div class="detail">
+                <h3>替热西</h3>
+                <div class="text"><span class="score">9.2分</span> / 324收藏</div>
+                <div class="text">1995 / 动作 / 冒险</div>
+                <div class="text">导演： 阿哥</div>
+                <p class="text">主演： 马修·麦康纳 / 安妮·海瑟薇 / 杰西卡·查斯坦</p>
+              </div>
+            </a>
+          </div> --> 
+        </div>
+      <div class="loading"><span class="iconfont icon-loading"> </span></div>
+    </section>
+    <section id="usBox">
+        <div class="ct"></div>
+    </section>
+    <section id="search">
+      <div class="search-area">
+        <input type="text" placeholder="搜索电影">
+        <span class="button">搜索</span>
+      </div>
+      <div class="search-result">
+        <div class="loading"><span class="iconfont icon-loading"> </span></div>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="active"><span class="iconfont icon-paihangbang"></span><span>Top250</span></div>
+    <div><span class="iconfont icon-beimei"></span><span>北美</span></div>
+    <div><span class="iconfont icon-sousuo"></span><span>搜索</span></div>
+  </footer>
+  <script> 
+    var Helper = {
+      createNode: function(movie){
+          var tpl = ''
+          tpl += '<div class="item clearfix">'
+          tpl += '<a href="#">'
+          tpl += '<div class="cover">'
+          tpl += '<img src="">'
+          tpl += '</div>'
+          tpl += '<div class="detail">'
+          tpl += '<h2></h2>'
+          tpl += '<div class="text"><span class="score"></span>分 / <span class="collect"></span>收藏</div>'
+          tpl += '<div class="text"><span class="year"></span> / <span class="genres"></span></div>'
+          tpl += '<div class="text">导演： <span class="directors"></span></div>'
+          tpl += '<div class="text">主演： <span class="cast"></span></div>'
+          tpl += '</div>'
+          tpl += '</a>'
+          tpl += '</div>'
+
+          var $mvct = $(tpl)
+          $mvct.find('a').attr('href',movie.alt)
+          $mvct.find('.cover img').attr('src',movie.images.small)
+          $mvct.find('h2').text(movie.title)
+          $mvct.find('.text .collect').text(movie.collect_count)
+          $mvct.find('.year').text(movie.year)
+          $mvct.find('.score').text(movie.rating.average)
+          $mvct.find('.genres').text(movie.genres.join(' / '))
+          $mvct.find('.directors').text(function(){
+            var directorArr = []
+            movie.directors.forEach(function(item){
+              directorArr.push(item.name)
+            })
+            return directorArr.join('、')
+          })
+          $mvct.find('.cast').text(function(){
+            var castArr = []
+            movie.casts.forEach(function(item){
+              castArr.push(item.name)
+            })
+            return castArr.join('、')
+          })
+          return $mvct
+      }
+    }
+
+    var top250 = {
+      init:function(){
+        this.$element = $('#top250') 
+        this.$loadEle = $('.loading')
+        this.$eleContain = $('#top250>.ct')
+        this.timer = null
+        this.isLoading = false
+        this.itemIndex = 0
+        this.isFinish = false
+        this.bind()
+        this.start()
+      },
+      bind:function(){
+        var _this = this
+        this.$element.scroll(function(){
+          _this.isBottom(function(){
+            _this.start()
+          })
+        })
+      },
+      start: function(){
+        var _this = this
+        this.getData(function(data){
+          _this.render(data)
+        })
+      },
+      render:function(data){
+        var _this = this
+        data.subjects.forEach(function(movie){
+          _this.$eleContain.append(Helper.createNode(movie))          
+        })
+      },
+      getData: function(callback){
+        var _this = this
+
+        if(_this.isLoading || _this.isFinish) return
+        _this.isLoading = true
+        _this.$loadEle.show()
+        $.ajax({
+        url: 'http://api.douban.com/v2/movie/top250',
+        type: 'GET',
+        data: {
+          start: _this.itemIndex,
+          count: 20
+        },
+        dataType: 'jsonp'
+        }).done(function(ret){
+          if(ret.total <= _this.itemIndex){
+            _this.isFinish = true
+          }
+          callback(ret)
+          _this.itemIndex += 20
+        }).fail(function(){
+          console.log('数据错误')
+        }).always(function(){
+          _this.isLoading = false
+          _this.$loadEle.hide()
+        })      
+      },
+      isBottom: function(callback){
+        var _this = this        
+        if(_this.timer){clearTimeout(_this.timer)}
+          _this.timer = setTimeout(function(){
+            if(_this.$element.height() + _this.$element.scrollTop() + 20 >= _this.$eleContain.height()) { 
+              callback()
+            }
+          }, 300)
+      }
+    }
+
+    var usBox = {
+      init:function(){
+        this.$element = $('#usBox') 
+        this.$eleContain = $('#usBox>.ct')
+        this.start()
+      },
+      start: function(){
+        var _this = this
+        this.getData(function(data){
+          _this.render(data)
+        })
+      },
+      render:function(data){
+        var _this = this
+        data.subjects.forEach(function(movie){
+          movie = movie.subject
+          _this.$eleContain.append(Helper.createNode(movie))          
+        })
+      },
+      getData: function(callback){
+        var _this = this
+        $.ajax({
+        url: 'http://api.douban.com/v2/movie/us_box',
+        type: 'GET',
+        dataType: 'jsonp'
+        }).done(function(ret){
+          callback(ret)
+        }).fail(function(){
+          console.log('数据错误')
+        }).always(function(){
+        })      
+      }
+    }
+
+    var search = {
+      init:function(){
+        this.$element = $('#search') 
+        this.$loadEle = $('.loading')
+        this.$eleContain = $('.search-result')
+        this.$button = $('.button')
+        this.keyword = ''
+        this.isLoading = false
+        this.bind()
+      },
+      bind:function(){
+        var _this = this
+        this.$button.on('click', function(){
+          _this.keyword = _this.$element.find('input').val()
+          _this.$eleContain.children('.item').remove()
+          _this.start()
+        })
+      },
+      start: function(){
+        var _this = this
+        this.getData(function(data){
+          _this.render(data)
+        })
+      },
+      render:function(data){
+        var _this = this
+        data.subjects.forEach(function(movie){
+          _this.$eleContain.append(Helper.createNode(movie))          
+        })
+      },
+      getData: function(callback){
+        var _this = this
+
+        if(_this.isLoading) return
+        _this.isLoading = true
+        _this.$loadEle.show()
+        $.ajax({
+        url: 'http://api.douban.com/v2/movie/search',
+        type: 'GET',
+        data: {
+          q: _this.keyword
+        },
+        dataType: 'jsonp'
+        }).done(function(ret){
+          callback(ret)
+          _this.itemIndex += 20
+        }).fail(function(){
+          console.log('数据错误')
+        }).always(function(){
+          _this.isLoading = false
+          _this.$loadEle.hide()
+        })      
+      }
+    }
+
+    var app = {
+      init: function(){
+        this.$tab = $('footer>div')
+        this.$pancel = $('section')
+        this.bind()
+
+        top250.init()
+        usBox.init()
+        search.init()
+      },
+      bind: function(){
+        var _this = this
+        this.$tab.click(function(){
+          _this.$pancel.hide().eq($(this).index()).show()
+          $(this).addClass('active').siblings().removeClass('active')
+        })
+      }
+    }
+
+    app.init()
+  </script>
+</body>
+</html>
